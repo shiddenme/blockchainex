@@ -6,8 +6,10 @@ import (
 	"blockchainex/cmd/service/example"
 	"blockchainex/cmd/service/fcoin"
 	_ "blockchainex/cmd/service/okex"
+	serverws "blockchainex/cmd/service/ws"
 	"blockchainex/configure"
-	"blockchainex/fcoin/ws"
+	fcoinws "blockchainex/fcoin/ws"
+	huobiws "blockchainex/huobi/ws"
 	okexws "blockchainex/okex/ws"
 	"context"
 	_ "context"
@@ -38,22 +40,51 @@ func init() {
 
 	// go example.BinanceClient(context.Background())
 
-	go binancewebsocket()
+	// go binancewebsocket()
 
 	// go okws()
+
+	// go huobiwebsocket()
+	go wsservice()
 }
 
+// wsservice websocket 测试
+func wsservice() {
+	time.Sleep(5 * time.Second)
+	go serverws.Client()
+	go serverws.Client2()
+}
+
+// huobiwebsocket huobi websocket test
+func huobiwebsocket() {
+	hbwebsocket := huobiws.NewHuobiWebsocket()
+	hbwebsocket.AddMarketKlineMsg()
+	hbwebsocket.AddMarketDepthMsg()
+	hbwebsocket.AddMarketTradeMsg()
+	hbwebsocket.AddMarketDetailMsg()
+	go hbwebsocket.AddMsg()
+
+	hbwebsocket.Topic()
+}
+
+// binancewebsocket binance websocket test
 func binancewebsocket() {
 	// bw := binance.NewBinanceWebsocket(context.Background())
 	// bw.Depth("btcusdt")
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	bws := binancews.NewBinanceWebsocket(ctx)
-	// bws.AggTrade("btcusdt")
-	bws.Trade("btcusdt")
+	go bws.AggTrade("btcusdt")
+	// go bws.Trade("btcusdt")
+	// go bws.KLineCandleStick("btcusdt")
+	// go bws.MiniTicker("btcusdt")
+	// go bws.Ticker("btcusdt")
+	// go bws.Depth("btcusdt")
+	// go bws.DiffDepth("btcusdt")
 	time.Sleep(30 * time.Second)
 	cancelCtx()
 }
 
+// okws okex websocket test
 func okws() {
 	// okex.Ticker()
 	ow := okexws.NewOkexWebsocket()
@@ -71,8 +102,9 @@ func okws() {
 	// ow.AddMessage("{'event':'addChannel','channel':'ok_sub_futureusd_btc_kline_this_week_1min'}")
 }
 
-func fcoinws() {
-	go ws.Start()
+// fcoinwebsocket fcoin websocket test
+func fcoinwebsocket() {
+	go fcoinws.Start()
 
 	go example.BinanceClient(context.Background())
 }
@@ -113,6 +145,11 @@ func main() {
 		fcoinRouter.GET("/ticker", fcoin.GetTicker)
 		fcoinRouter.GET("/candle", fcoin.GetCandle)
 		fcoinRouter.GET("/depth", fcoin.GetDepth)
+	}
+
+	wsRouter := e.Group("/ws")
+	{
+		wsRouter.GET("/server", serverws.ServeWs)
 	}
 
 	// e.Logger.Fatal(e.StartTLS(":"+fmt.Sprint(configure.Port), "cert.pem", "key.pem"))

@@ -101,6 +101,7 @@ func (f *WSFCoin) FCoinClient(topic *Topic) {
 	}
 }
 
+// HandleRecv 处理接收到的数据
 func (f *WSFCoin) HandleRecv(data []byte) error {
 	var (
 		result FCoinWebSocketResult
@@ -119,17 +120,11 @@ func (f *WSFCoin) HandleRecv(data []byte) error {
 	} else {
 		tp := strings.Split(result.Type, ".")
 		var r interface{}
-		// log.Println("type1: ", tp[0])
 		switch tp[0] {
 		case "candle":
 			r = f.Candle
 		case "ticker":
 			r = f.Ticker
-			// err = json.Unmarshal(data, &f.Ticker)
-			// if err != nil {
-			// 	log.Println("recv unmarshal fail, ", err)
-			// 	return err
-			// }
 		case "depth":
 			r = f.Depth
 		}

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"blockchainex/configure"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -18,11 +19,18 @@ func NewOkexWebsocket() *OkexWebsocket {
 }
 
 func (ow *OkexWebsocket) Ticker() {
+	var (
+		dial websocket.Dialer
+	)
 	interrupt := make(chan os.Signal)
 	signal.Notify(interrupt, os.Interrupt)
-	proxyUrl, _ := url.Parse("http://127.0.0.1:1080")
-	dial := websocket.Dialer{
-		Proxy: http.ProxyURL(proxyUrl),
+	if configure.IsWall {
+		proxyUrl, _ := url.Parse(configure.WallProxyAddr)
+		dial = websocket.Dialer{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
+	} else {
+		dial = websocket.Dialer{}
 	}
 
 	conn, _, err := dial.Dial(ow.wsUrl, nil)
@@ -74,7 +82,7 @@ func (ow *OkexWebsocket) Ticker() {
 			case <-time.After(30 * time.Second):
 			}
 		case msg := <-ow.message:
-			log.Println("write msg: ", msg)
+			// log.Println("write msg: ", msg)
 			err := conn.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {
 				log.Fatalln("write msg fail: ", msg)

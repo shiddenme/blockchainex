@@ -16,53 +16,43 @@ func NewBinanceWebsocket(ctx context.Context) *BinanceWebsocket {
 }
 
 func (bw *BinanceWebsocket) AggTrade(symbol string) {
-	proxyUrl, _ := url.Parse("http://127.0.0.1:1080")
-	dial := websocket.Dialer{
-		Proxy: http.ProxyURL(proxyUrl),
-	}
-	log.Println(bw.wsUrl + fmt.Sprintf("%s@aggTrade", symbol))
-	conn, _, err := dial.Dial(bw.wsUrl+fmt.Sprintf("%s@aggTrade", symbol), nil)
-	if err != nil {
-		log.Fatalln("dial fail, ", err)
-		return
-	}
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		defer conn.Close()
-		for {
-			select {
-			case <-bw.ctx.Done():
-			default:
-				_, data, err := conn.ReadMessage()
-				if err != nil {
-					log.Fatalln("read fail, ", err)
-					return
-				}
-				log.Println("recv: ", string(data))
-			}
-		}
-	}()
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-		case <-bw.ctx.Done():
-			select {
-			case <-time.After(10 * time.Second):
-			case <-done:
-			}
-			return
-		}
-	}
-
+	path := fmt.Sprintf("%s@aggTrade", symbol)
+	bw.Wss(path)
 }
 
 func (bw *BinanceWebsocket) Trade(symbol string) {
 	path := fmt.Sprintf("%s@trade", symbol)
+	bw.Wss(path)
+}
+
+func (bw *BinanceWebsocket) KLineCandleStick(symbol string) {
+	klineList := []string{"1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"}
+	for _, kline := range klineList {
+		path := fmt.Sprintf("%s@kline_%s", symbol, kline)
+		bw.Wss(path)
+	}
+}
+
+func (bw *BinanceWebsocket) MiniTicker(symbol string) {
+	path := fmt.Sprintf("%s@miniTicker", symbol)
+	bw.Wss(path)
+}
+
+func (bw *BinanceWebsocket) Ticker(symbol string) {
+	path := fmt.Sprintf("%s@ticker", symbol)
+	bw.Wss(path)
+}
+
+func (bw *BinanceWebsocket) Depth(symbol string) {
+	depthList := []int{5, 10, 20}
+	for _, depth := range depthList {
+		path := fmt.Sprintf("%s@depth%d", symbol, depth)
+		bw.Wss(path)
+	}
+}
+
+func (bw *BinanceWebsocket) DiffDepth(symbol string) {
+	path := fmt.Sprintf("%s@depth", symbol)
 	bw.Wss(path)
 }
 
@@ -73,6 +63,7 @@ func (bw *BinanceWebsocket) Wss(path string) {
 	)
 	if configure.IsWall {
 		proxyUrl, _ := url.Parse(configure.WallProxyAddr)
+		// websocket proxy
 		dial = websocket.Dialer{
 			Proxy: http.ProxyURL(proxyUrl),
 		}
@@ -87,6 +78,7 @@ func (bw *BinanceWebsocket) Wss(path string) {
 	}
 	done := make(chan struct{})
 	defer conn.Close()
+	// read message
 	go func() {
 		defer close(done)
 		for {
